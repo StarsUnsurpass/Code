@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Neon Snake Arena</title>
+  <style>
+    :root {
+      --player-color: #00ff88;
+      --ai-random: #ff4444;
+      --ai-hunter: #44aaff;
+      --ai-coward: #ffaa00;
+      --food-normal: #ffff00;
+      --food-speed: #00ffff;
+      --food-slow: #ff00ff;
+      --food-points: #ff8800;
+      --food-shield: #8f67ff;
+      --food-phase: #66ff66;
+      --food-chaos: #ff6699;
+      --bg: #050510;
+      --panel: rgba(10, 10, 25, 0.85);
+      --text: #e6f5ff;
+      --glow: 0 0 10px currentColor, 0 0 20px currentColor;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+      color: var(--text);
+    }
+
+    body {
+      background: radial-gradient(circle at top, #101030, #04040a);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .wrapper {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      padding: 1rem;
+      gap: 1rem;
+    }
+
+    .game-area {
+      flex: 1 1 60%;
+      min-width: 320px;
+      min-height: 300px;
+      background: #050515;
+      border-radius: 18px;
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .panel {
+      flex: 1 1 30%;
+      min-width: 260px;
+      background: var(--panel);
+      border-radius: 18px;
+      padding: 1.25rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 0 35px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    h1 {
+      margin: 1rem auto;
+      text-align: center;
+      letter-spacing: 0.2rem;
+      text-transform: uppercase;
+      color: #8affff;
+      text-shadow: 0 0 10px #8affff;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      padding: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .card h3 {
+      margin: 0 0 0.25rem;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      color: #7ad5ff;
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .legend {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .legend-swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      box-shadow: var(--glow);
+    }
+
+    .mini-map {
+      width: 100%;
+      height: 180px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .controls {
+      font-size: 0.85rem;
+      line-height: 1.4;
+      color: rgba(255, 255, 255, 0.75);
+    }
+
+    .toast {
+      position: absolute;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    @media (max-width: 960px) {
+      .wrapper {
+        flex-direction: column;
+      }
+      .panel {
+        order: -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Neon Snake Arena</h1>
+  <div class="wrapper">
+    <div class="panel">
+      <div class="stat-grid">
+        <div class="card">
+          <h3>Score</h3>
+          <p id="score">0</p>
+        </div>
+        <div class="card">
+          <h3>Length</h3>
+          <p id="length">0</p>
+        </div>
+        <div class="card">
+          <h3>Time</h3>
+          <p id="time">0s</p>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Active Abilities</h3>
+        <p id="abilities">None</p>
+      </div>
+      <div class="card">
+        <h3>Map Theme</h3>
+        <p id="theme-name">--</p>
+      </div>
+      <div class="card">
+        <h3>Legend</h3>
+        <div class="legend">
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: var(--player-color); color: var(--player-color);"></span>
+            玩家蛇
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: var(--ai-random); color: var(--ai-random);"></span>
+            AI 随机型
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: var(--ai-hunter); color: var(--ai-hunter);"></span>
+            AI 猎食型
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: var(--ai-coward); color: var(--ai-coward);"></span>
+            AI 胆小型
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>AI Status</h3>
+        <div id="ai-status"></div>
+      </div>
+      <div class="card">
+        <h3>Mini Map</h3>
+        <canvas id="minimap" class="mini-map"></canvas>
+      </div>
+      <div class="card controls">
+        <h3>Controls</h3>
+        鼠标控制蛇头方向，距离影响速度。拾取特殊食物获得能力，避免撞墙或其他蛇。
+      </div>
+    </div>
+    <div class="game-area">
+      <canvas id="game"></canvas>
+      <div class="toast" id="toast"></div>
+    </div>
+  </div>
+  <script>
+    // ---------- Utility helpers ----------
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    const rand = (min, max) => Math.random() * (max - min) + min;
+    const randInt = (min, max) => Math.floor(rand(min, max + 1));
+    const distSq = (a, b) => {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return dx * dx + dy * dy;
+    };
+    const ease = (current, target, factor) => current + (target - current) * factor;
+    const COLOR_CACHE = {};
+    const cssVar = (name) => {
+      if (!COLOR_CACHE[name]) {
+        COLOR_CACHE[name] =
+          getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#ffffff";
+      }
+      return COLOR_CACHE[name];
+    };
+    const MAP_THEMES = [
+      {
+        name: "量子花园",
+        gradient: ["#041026", "#0b2e2f"],
+        grid: "rgba(0, 255, 204, 0.08)",
+        nodeInner: "rgba(0, 255, 136, 0.35)",
+        nodeOuter: "rgba(0, 120, 255, 0.05)",
+        spark: "rgba(0,255,255,0.45)",
+        obstacle: {
+          stroke: "rgba(0, 255, 170, 0.35)",
+          fill: "rgba(0, 80, 120, 0.2)",
+        },
+        obstacleCount: 6,
+      },
+      {
+        name: "离子峡谷",
+        gradient: ["#1a0318", "#360942"],
+        grid: "rgba(255, 80, 180, 0.07)",
+        nodeInner: "rgba(255, 80, 180, 0.35)",
+        nodeOuter: "rgba(80, 0, 120, 0.08)",
+        spark: "rgba(255,120,220,0.6)",
+        obstacle: {
+          stroke: "rgba(157, 70, 255, 0.4)",
+          fill: "rgba(90, 10, 80, 0.25)",
+        },
+        obstacleCount: 7,
+      },
+      {
+        name: "极光平原",
+        gradient: ["#030c1c", "#062663"],
+        grid: "rgba(120, 190, 255, 0.08)",
+        nodeInner: "rgba(70, 180, 255, 0.4)",
+        nodeOuter: "rgba(10, 20, 60, 0.08)",
+        spark: "rgba(120,190,255,0.55)",
+        obstacle: {
+          stroke: "rgba(100, 180, 255, 0.4)",
+          fill: "rgba(5, 30, 80, 0.25)",
+        },
+        obstacleCount: 5,
+      },
+    ];
+
+    class Vector2 {
+      constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+      }
+      set(x, y) {
+        this.x = x;
+        this.y = y;
+        return this;
+      }
+      copy(v) {
+        this.x = v.x;
+        this.y = v.y;
+        return this;
+      }
+      length() {
+        return Math.hypot(this.x, this.y);
+      }
+      normalize() {
+        const len = this.length() || 1;
+        this.x /= len;
+        this.y /= len;
+        return this;
+      }
+      scale(s) {
+        this.x *= s;
+        this.y *= s;
+        return this;
+      }
+      add(v) {
+        this.x += v.x;
+        this.y += v.y;
+        return this;
+      }
+      clone() {
+        return new Vector2(this.x, this.y);
+      }
+    }
+
+    class ObjectPool {
+      constructor(createFn) {
+        this.createFn = createFn;
+        this.pool = [];
+      }
+      acquire() {
+        return this.pool.pop() || this.createFn();
+      }
+      release(obj) {
+        this.pool.push(obj);
+      }
+    }
+
+    // Simple QuadTree for broad-phase collision checks
+    class QuadTree {
+      constructor(boundary, capacity = 4, depth = 0, maxDepth = 6) {
+        this.boundary = boundary;
+        this.capacity = capacity;
+        this.points = [];
+        this.divided = false;
+        this.depth = depth;
+        this.maxDepth = maxDepth;
+      }
+      subdivide() {
+        const { x, y, w, h } = this.boundary;
+        const hw = w / 2;
+        const hh = h / 2;
+        this.nw = new QuadTree({ x, y, w: hw, h: hh }, this.capacity, this.depth + 1, this.maxDepth);
+        this.ne = new QuadTree({ x: x + hw, y, w: hw, h: hh }, this.capacity, this.depth + 1, this.maxDepth);
+        this.sw = new QuadTree({ x, y: y + hh, w: hw, h: hh }, this.capacity, this.depth + 1, this.maxDepth);
+        this.se = new QuadTree({ x: x + hw, y: y + hh, w: hw, h: hh }, this.capacity, this.depth + 1, this.maxDepth);
+        this.divided = true;
+      }
+      insert(point) {
+        if (!this.contains(point)) return false;
+        if (this.points.length < this.capacity || this.depth >= this.maxDepth) {
+          this.points.push(point);
+          return true;
+        }
+        if (!this.divided) {
+          this.subdivide();
+        }
+        return (
+          this.nw.insert(point) ||
+          this.ne.insert(point) ||
+          this.sw.insert(point) ||
+          this.se.insert(point)
+        );
+      }
+      query(range, found = []) {
+        if (!this.intersects(range)) {
+          return found;
+        }
+        for (const p of this.points) {
+          if (
+            p.x >= range.x &&
+            p.x <= range.x + range.w &&
+            p.y >= range.y &&
+            p.y <= range.y + range.h
+          ) {
+            found.push(p);
+          }
+        }
+        if (this.divided) {
+          this.nw.query(range, found);
+          this.ne.query(range, found);
+          this.sw.query(range, found);
+          this.se.query(range, found);
+        }
+        return found;
+      }
+      contains(point) {
+        const { x, y, w, h } = this.boundary;
+        return (
+          point.x >= x &&
+          point.x < x + w &&
+          point.y >= y &&
+          point.y < y + h
+        );
+      }
+      intersects(range) {
+        const { x, y, w, h } = this.boundary;
+        return !(
+          range.x > x + w ||
+          range.x + range.w < x ||
+          range.y > y + h ||
+          range.y + range.h < y
+        );
+      }
+    }
+
+    class Particle {
+      constructor() {
+        this.position = new Vector2();
+        this.velocity = new Vector2();
+        this.life = 0;
+        this.color = "#fff";
+      }
+      reset(x, y, color) {
+        this.position.set(x, y);
+        this.velocity.set(rand(-1, 1), rand(-1, 1)).normalize().scale(rand(20, 80));
+        this.life = rand(0.4, 0.8);
+        this.color = color;
+        return this;
+      }
+      update(dt) {
+        this.life -= dt;
+        this.position.x += this.velocity.x * dt;
+        this.position.y += this.velocity.y * dt;
+      }
+    }
+
+    class ParticleSystem {
+      constructor(count = 120) {
+        this.pool = new ObjectPool(() => new Particle());
+        this.active = [];
+        this.max = count;
+      }
+      burst(x, y, color) {
+        for (let i = 0; i < 12; i++) {
+          const particle = this.pool.acquire().reset(x, y, color);
+          this.active.push(particle);
+        }
+      }
+      update(dt) {
+        for (let i = this.active.length - 1; i >= 0; i--) {
+          const p = this.active[i];
+          p.update(dt);
+          if (p.life <= 0) {
+            this.pool.release(p);
+            this.active.splice(i, 1);
+          }
+        }
+      }
+      render(ctx) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (const p of this.active) {
+          const alpha = clamp(p.life, 0, 1);
+          ctx.fillStyle = `${p.color}${Math.floor(alpha * 255)
+            .toString(16)
+            .padStart(2, "0")}`;
+          ctx.beginPath();
+          ctx.arc(p.position.x, p.position.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
+    class Environment {
+      constructor(bounds) {
+        this.bounds = bounds;
+        this.theme = MAP_THEMES[0];
+        this.nodes = [];
+        this.sparks = [];
+        this.sparkTimer = 0;
+        this.setTheme(MAP_THEMES[0]);
+      }
+      setBounds(bounds) {
+        this.bounds = bounds;
+        this.generateNodes();
+      }
+      setTheme(theme) {
+        this.theme = theme;
+        this.generateNodes();
+      }
+      generateNodes() {
+        this.nodes = [];
+        const count = 8;
+        for (let i = 0; i < count; i++) {
+          this.nodes.push({
+            x: rand(0, this.bounds.width),
+            y: rand(0, this.bounds.height),
+            radius: rand(80, 160),
+            phase: rand(0, Math.PI * 2),
+            speed: rand(-1, 1) * 0.7,
+          });
+        }
+      }
+      spawnSpark() {
+        this.sparks.push({
+          x: rand(0, this.bounds.width),
+          y: rand(0, this.bounds.height),
+          angle: rand(0, Math.PI * 2),
+          speed: rand(30, 90),
+          life: rand(0.6, 1.4),
+        });
+      }
+      update(dt) {
+        this.nodes.forEach((node) => {
+          node.phase += node.speed * dt;
+        });
+        this.sparkTimer -= dt;
+        if (this.sparkTimer <= 0) {
+          this.spawnSpark();
+          this.sparkTimer = rand(0.15, 0.45);
+        }
+        for (let i = this.sparks.length - 1; i >= 0; i--) {
+          const spark = this.sparks[i];
+          spark.life -= dt;
+          spark.x += Math.cos(spark.angle) * spark.speed * dt;
+          spark.y += Math.sin(spark.angle) * spark.speed * dt;
+          if (spark.x < 0) spark.x = this.bounds.width;
+          if (spark.x > this.bounds.width) spark.x = 0;
+          if (spark.y < 0) spark.y = this.bounds.height;
+          if (spark.y > this.bounds.height) spark.y = 0;
+          if (spark.life <= 0) {
+            this.sparks.splice(i, 1);
+          }
+        }
+      }
+      renderBackground(ctx) {
+        const gradient = ctx.createLinearGradient(0, 0, this.bounds.width, this.bounds.height);
+        gradient.addColorStop(0, this.theme.gradient[0]);
+        gradient.addColorStop(1, this.theme.gradient[1]);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, this.bounds.width, this.bounds.height);
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (const node of this.nodes) {
+          const radius = node.radius * (1 + Math.sin(node.phase) * 0.1);
+          const glow = ctx.createRadialGradient(
+            node.x,
+            node.y,
+            radius * 0.1,
+            node.x,
+            node.y,
+            radius
+          );
+          glow.addColorStop(0, this.theme.nodeInner);
+          glow.addColorStop(1, this.theme.nodeOuter);
+          ctx.fillStyle = glow;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+        ctx.save();
+        ctx.strokeStyle = this.theme.spark;
+        ctx.lineWidth = 1;
+        this.sparks.forEach((spark) => {
+          ctx.globalAlpha = spark.life;
+          ctx.beginPath();
+          ctx.moveTo(spark.x, spark.y);
+          ctx.lineTo(
+            spark.x - Math.cos(spark.angle) * 6,
+            spark.y - Math.sin(spark.angle) * 6
+          );
+          ctx.stroke();
+        });
+        ctx.restore();
+      }
+    }
+
+    class Input {
+      constructor(canvas) {
+        this.canvas = canvas;
+        this.pointer = new Vector2();
+        this.target = new Vector2();
+        this.smoothing = 0.15;
+        const rect = this.canvas.getBoundingClientRect();
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        this.pointer.set(cx, cy);
+        this.target.set(cx, cy);
+        this.canvas.addEventListener("mousemove", (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          this.target.set(e.clientX - rect.left, e.clientY - rect.top);
+        });
+      }
+      update() {
+        this.pointer.x = ease(this.pointer.x, this.target.x, this.smoothing);
+        this.pointer.y = ease(this.pointer.y, this.target.y, this.smoothing);
+      }
+    }
+
+    class SnakeSegment {
+      constructor() {
+        this.position = new Vector2();
+      }
+    }
+
+    class Snake {
+      constructor({ color, maxLength = 80, speed = 120 }) {
+        this.color = color;
+        this.segments = [];
+        this.segmentPool = new ObjectPool(() => new SnakeSegment());
+        this.maxLength = maxLength;
+        this.speed = speed;
+        this.baseSpeed = speed;
+        this.speedFactor = 1;
+        this.direction = new Vector2(1, 0);
+        this.head = new Vector2();
+        this.targetDirection = new Vector2(1, 0);
+        this.turnSmooth = 0.12;
+        this.isAlive = true;
+        this.growth = 0;
+        this.effects = new Map();
+      }
+      init(x, y) {
+        if (this.segments.length) {
+          for (const seg of this.segments) {
+            this.segmentPool.release(seg);
+          }
+        }
+        this.segments.length = 0;
+        this.head.set(x, y);
+        for (let i = 0; i < 20; i++) {
+          const seg = this.segmentPool.acquire();
+          seg.position.set(x - i * 4, y);
+          this.segments.push(seg);
+        }
+        this.isAlive = true;
+        this.growth = 0;
+        this.effects.clear();
+      }
+      addEffect(key, value, duration) {
+        this.effects.set(key, { value, duration });
+        this.applyEffects();
+      }
+      applyEffects() {
+        this.speedFactor = 1;
+        if (this.effects.has("speed")) {
+          this.speedFactor *= this.effects.get("speed").value;
+        }
+        if (this.effects.has("slow")) {
+          this.speedFactor *= this.effects.get("slow").value;
+        }
+      }
+      updateEffects(dt) {
+        for (const [key, effect] of this.effects.entries()) {
+          effect.duration -= dt;
+          if (effect.duration <= 0) {
+            this.effects.delete(key);
+          }
+        }
+        this.applyEffects();
+      }
+      steer(target, sensitivity = 0.08) {
+        const desired = target.clone().add(this.head.clone().scale(-1));
+        desired.normalize();
+        this.targetDirection.copy(desired);
+        this.direction.x = ease(this.direction.x, this.targetDirection.x, sensitivity);
+        this.direction.y = ease(this.direction.y, this.targetDirection.y, sensitivity);
+        this.direction.normalize();
+      }
+      move(dt) {
+        if (!this.isAlive) return;
+        const velocity = this.direction.clone().scale(this.speed * this.speedFactor * dt);
+        this.head.add(velocity);
+        const spacing = 4;
+        let prev = this.head;
+        for (const seg of this.segments) {
+          const dx = prev.x - seg.position.x;
+          const dy = prev.y - seg.position.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance > spacing) {
+            seg.position.x = prev.x - (dx / distance) * spacing;
+            seg.position.y = prev.y - (dy / distance) * spacing;
+          }
+          prev = seg.position;
+        }
+        if (this.growth > 0) {
+          this.growth -= dt;
+          if (this.segments.length < this.maxLength) {
+            const tail = this.segments[this.segments.length - 1];
+            const seg = this.segmentPool.acquire();
+            seg.position.copy(tail.position);
+            this.segments.push(seg);
+          }
+        }
+      }
+      render(ctx) {
+        if (!this.isAlive) return;
+        ctx.save();
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = this.color;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        const tail = this.segments[this.segments.length - 1]?.position || this.head;
+        const gradient = ctx.createLinearGradient(this.head.x, this.head.y, tail.x, tail.y);
+        gradient.addColorStop(0, this.color);
+        gradient.addColorStop(1, "rgba(255,255,255,0.15)");
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(this.head.x, this.head.y);
+        for (const seg of this.segments) {
+          ctx.lineTo(seg.position.x, seg.position.y);
+        }
+        ctx.stroke();
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.head.x, this.head.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    class PlayerSnake extends Snake {
+      constructor(input) {
+        super({ color: cssVar("--player-color"), maxLength: 120, speed: 140 });
+        this.input = input;
+      }
+      update(dt) {
+        this.updateEffects(dt);
+        this.input.update();
+        const target = this.input.pointer.clone();
+        const distance = Math.hypot(target.x - this.head.x, target.y - this.head.y);
+        const dynamicSpeed = clamp(distance * 0.5, 60, 240);
+        this.speed = ease(this.speed, dynamicSpeed, 0.05);
+        this.steer(target, 0.2);
+        this.move(dt);
+      }
+    }
+
+    class AISnake extends Snake {
+      constructor(behavior, intelligence = 5, mapBounds) {
+        const colors = {
+          random: cssVar("--ai-random"),
+          hunter: cssVar("--ai-hunter"),
+          coward: cssVar("--ai-coward"),
+        };
+        super({ color: colors[behavior], maxLength: 100, speed: 120 });
+        this.behavior = behavior;
+        this.intelligence = intelligence;
+        this.target = new Vector2();
+        this.mapBounds = mapBounds;
+        this.behaviorTimer = rand(0.5, 2);
+      }
+      chooseTarget(game) {
+        const { width, height } = this.mapBounds;
+        if (game.abilitySystem && game.abilitySystem.isChaos()) {
+          const offset = game.player.head
+            .clone()
+            .add(this.head.clone().scale(-1))
+            .normalize()
+            .scale(-200);
+          this.target.copy(this.head.clone().add(offset));
+          return;
+        }
+        if (this.behavior === "random") {
+          if (this.behaviorTimer <= 0) {
+            this.target.set(rand(0, width), rand(0, height));
+            this.behaviorTimer = rand(1, 3);
+          }
+        } else if (this.behavior === "hunter") {
+          let closest = null;
+          let minDist = Infinity;
+          for (const food of game.foodManager.foods) {
+            const d = distSq(this.head, food.position);
+            if (d < minDist) {
+              minDist = d;
+              closest = food.position;
+            }
+          }
+          this.target.copy(closest || game.player.head);
+        } else if (this.behavior === "coward") {
+          const threat = game.player.head;
+          const dir = this.head.clone().add(threat.clone().scale(-1)).normalize();
+          this.target.copy(this.head.clone().add(dir.scale(120)));
+        }
+      }
+      update(dt, game) {
+        if (!this.isAlive) return;
+        this.updateEffects(dt);
+        this.speed = this.baseSpeed * (1 + game.time / 180);
+        this.behaviorTimer -= dt;
+        this.chooseTarget(game);
+        if (this.behavior === "random") {
+          this.steer(this.target, 0.05);
+        } else if (this.behavior === "hunter") {
+          this.steer(this.target, 0.07 + this.intelligence * 0.01);
+        } else if (this.behavior === "coward") {
+          this.steer(this.target, 0.1);
+        }
+        const jitter = new Vector2(rand(-1, 1), rand(-1, 1)).scale(0.05);
+        this.direction.add(jitter).normalize();
+        this.move(dt);
+      }
+    }
+
+    class Food {
+      constructor() {
+        this.position = new Vector2();
+        this.value = 10;
+        this.type = "normal";
+      }
+      reset(type, x, y) {
+        this.type = type;
+        this.position.set(x, y);
+        this.value = type === "points" ? 50 : 10;
+        return this;
+      }
+      color() {
+        switch (this.type) {
+          case "speed":
+            return cssVar("--food-speed");
+          case "slow":
+            return cssVar("--food-slow");
+          case "points":
+            return cssVar("--food-points");
+          case "shield":
+            return cssVar("--food-shield");
+          case "phase":
+            return cssVar("--food-phase");
+          case "invert":
+            return cssVar("--food-chaos");
+          default:
+            return cssVar("--food-normal");
+        }
+      }
+    }
+
+    class FoodManager {
+      constructor(bounds) {
+        this.bounds = bounds;
+        this.foods = [];
+        this.pool = new ObjectPool(() => new Food());
+        this.maxFoods = 18;
+      }
+      spawn(type = "normal") {
+        if (this.foods.length >= this.maxFoods) return;
+        const food = this.pool.acquire();
+        food.reset(
+          type,
+          rand(40, this.bounds.width - 40),
+          rand(40, this.bounds.height - 40)
+        );
+        this.foods.push(food);
+      }
+      update() {
+        while (this.foods.length < this.maxFoods) {
+          const typeChance = Math.random();
+          let type = "normal";
+          if (typeChance > 0.95) type = "shield";
+          else if (typeChance > 0.9) type = "phase";
+          else if (typeChance > 0.82) type = "invert";
+          else if (typeChance > 0.7) type = "speed";
+          else if (typeChance > 0.6) type = "slow";
+          else if (typeChance > 0.5) type = "points";
+          this.spawn(type);
+        }
+      }
+      consume(food) {
+        const idx = this.foods.indexOf(food);
+        if (idx !== -1) {
+          this.foods.splice(idx, 1);
+          this.pool.release(food);
+        }
+      }
+      render(ctx) {
+        ctx.save();
+        ctx.shadowBlur = 15;
+        const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+        const t = now * 0.004;
+        for (const food of this.foods) {
+          ctx.shadowColor = food.color();
+          ctx.fillStyle = food.color();
+          const flicker = (Math.sin(t + food.position.x * 0.1) + 1) * 0.5;
+          const radius = 4 + flicker * 2;
+          ctx.beginPath();
+          ctx.arc(food.position.x, food.position.y, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
+    class Obstacle {
+      constructor(x, y, w, h) {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+      }
+      render(ctx, theme) {
+        ctx.save();
+        const stroke = theme?.obstacle?.stroke || "rgba(255,255,255,0.12)";
+        const fill = theme?.obstacle?.fill || "rgba(255,255,255,0.04)";
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 2;
+        ctx.fillStyle = fill;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = stroke;
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+        ctx.strokeRect(this.x, this.y, this.w, this.h);
+        ctx.restore();
+      }
+    }
+
+    class ObstacleManager {
+      constructor(bounds) {
+        this.bounds = bounds;
+        this.obstacles = [];
+        this.theme = null;
+      }
+      setTheme(theme) {
+        this.theme = theme;
+      }
+      generate(count = 6, reserved = []) {
+        this.obstacles.length = 0;
+        let attempts = 0;
+        while (this.obstacles.length < count && attempts < count * 6) {
+          attempts++;
+          const w = rand(80, 180);
+          const h = rand(40, 120);
+          const x = rand(40, this.bounds.width - w - 40);
+          const y = rand(40, this.bounds.height - h - 40);
+          const overlaps = reserved.some((pos) => {
+            if (!pos) return false;
+            return (
+              pos.x > x - 70 &&
+              pos.x < x + w + 70 &&
+              pos.y > y - 70 &&
+              pos.y < y + h + 70
+            );
+          });
+          if (overlaps) continue;
+          this.obstacles.push(new Obstacle(x, y, w, h));
+        }
+        if (this.obstacles.length < count) {
+          // Fill remaining slots ignoring reservations to avoid empty maps
+          while (this.obstacles.length < count) {
+            const w = rand(80, 180);
+            const h = rand(40, 120);
+            const x = rand(40, this.bounds.width - w - 40);
+            const y = rand(40, this.bounds.height - h - 40);
+            this.obstacles.push(new Obstacle(x, y, w, h));
+          }
+        }
+      }
+      render(ctx) {
+        for (const ob of this.obstacles) {
+          ob.render(ctx, this.theme);
+        }
+      }
+    }
+
+    class CollisionSystem {
+      constructor(bounds) {
+        this.bounds = bounds;
+        this.quadTree = null;
+      }
+      rebuild(snakes) {
+        this.quadTree = new QuadTree(
+          { x: 0, y: 0, w: this.bounds.width, h: this.bounds.height },
+          5,
+          0,
+          5
+        );
+        snakes.forEach((snake) => {
+          if (!snake.isAlive) return;
+          this.quadTree.insert({ x: snake.head.x, y: snake.head.y, snake });
+          for (const seg of snake.segments) {
+            this.quadTree.insert({ x: seg.position.x, y: seg.position.y, snake });
+          }
+        });
+      }
+      collideSnakes(subject) {
+        if (!subject.isAlive) return null;
+        const range = {
+          x: subject.head.x - 10,
+          y: subject.head.y - 10,
+          w: 20,
+          h: 20,
+        };
+        const nearby = this.quadTree.query(range);
+        for (const point of nearby) {
+          if (point.snake === subject) continue;
+          if (distSq(point, subject.head) < 80) {
+            return point.snake;
+          }
+        }
+        return null;
+      }
+      collideObstacles(snake, obstacles) {
+        if (!snake.isAlive) return false;
+        const r = 6;
+        for (const ob of obstacles) {
+          if (
+            snake.head.x + r > ob.x &&
+            snake.head.x - r < ob.x + ob.w &&
+            snake.head.y + r > ob.y &&
+            snake.head.y - r < ob.y + ob.h
+          ) {
+            return true;
+          }
+        }
+        return false;
+      }
+      collideWalls(snake) {
+        const r = 6;
+        const { width, height } = this.bounds;
+        return (
+          snake.head.x < r ||
+          snake.head.x > width - r ||
+          snake.head.y < r ||
+          snake.head.y > height - r
+        );
+      }
+    }
+
+    class AIManager {
+      constructor(bounds) {
+        this.bounds = bounds;
+        this.snakes = [];
+        this.maxSnakes = 6;
+        this.behaviors = ["random", "hunter", "coward"];
+      }
+      spawnInitial(obstacles = [], avoidPositions = []) {
+        const count = randInt(1, 3);
+        this.snakes.length = 0;
+        for (let i = 0; i < count; i++) {
+          const behavior = this.behaviors[i % this.behaviors.length];
+          this.spawnOne(behavior, obstacles, avoidPositions);
+        }
+      }
+      randomBehavior() {
+        return this.behaviors[randInt(0, this.behaviors.length - 1)];
+      }
+      spawnOne(behavior, obstacles = [], avoidPositions = []) {
+        if (this.snakes.length >= this.maxSnakes) return null;
+        const spawnPos = this.findSpawnPosition(obstacles, avoidPositions);
+        const snake = new AISnake(behavior || this.randomBehavior(), randInt(4, 9), this.bounds);
+        snake.init(spawnPos.x, spawnPos.y);
+        this.snakes.push(snake);
+        return snake;
+      }
+      findSpawnPosition(obstacles, avoidPositions) {
+        const tries = 25;
+        for (let i = 0; i < tries; i++) {
+          const x = rand(60, this.bounds.width - 60);
+          const y = rand(60, this.bounds.height - 60);
+          const position = new Vector2(x, y);
+          let blocked = false;
+          for (const ob of obstacles) {
+            if (
+              x > ob.x - 30 &&
+              x < ob.x + ob.w + 30 &&
+              y > ob.y - 30 &&
+              y < ob.y + ob.h + 30
+            ) {
+              blocked = true;
+              break;
+            }
+          }
+          if (blocked) continue;
+          if (
+            avoidPositions.some((p) => (p ? distSq(p, position) < 140 * 140 : false))
+          ) {
+            continue;
+          }
+          const nearExisting = this.snakes.some((s) => distSq(s.head, position) < 160 * 160);
+          if (nearExisting) continue;
+          return position;
+        }
+        return new Vector2(this.bounds.width / 2, this.bounds.height / 2);
+      }
+      update(dt, game) {
+        for (const snake of this.snakes) {
+          snake.update(dt, game);
+        }
+      }
+      render(ctx) {
+        for (const snake of this.snakes) {
+          snake.render(ctx);
+        }
+      }
+    }
+
+    // Handles temporary abilities and their side effects
+    class AbilitySystem {
+      constructor(player) {
+        this.player = player;
+        this.active = [];
+        this.timers = {
+          doubleScore: 0,
+          invincible: 0,
+          phase: 0,
+          chaos: 0,
+        };
+      }
+      pushAbility(label, duration) {
+        const existing = this.active.find((a) => a.label === label);
+        if (existing) {
+          existing.duration = duration;
+        } else {
+          this.active.push({ label, duration });
+        }
+      }
+      trigger(type) {
+        if (type === "speed") {
+          this.player.addEffect("speed", 1.8, 4);
+          this.pushAbility("极速 x1.8", 4);
+        } else if (type === "slow") {
+          this.player.addEffect("slow", 0.6, 4);
+          this.pushAbility("时间减速", 4);
+        } else if (type === "points") {
+          this.timers.doubleScore = 6;
+          this.pushAbility("双倍得分", 6);
+        } else if (type === "shield") {
+          this.timers.invincible = 5;
+          this.pushAbility("量子护盾", 5);
+        } else if (type === "phase") {
+          this.timers.phase = 4;
+          this.pushAbility("穿墙模式", 4);
+        } else if (type === "invert") {
+          this.timers.chaos = 4;
+          this.pushAbility("AI 反转", 4);
+        }
+      }
+      update(dt) {
+        for (let i = this.active.length - 1; i >= 0; i--) {
+          const ability = this.active[i];
+          ability.duration -= dt;
+          if (ability.duration <= 0) {
+            this.active.splice(i, 1);
+          }
+        }
+        Object.keys(this.timers).forEach((key) => {
+          this.timers[key] = Math.max(0, this.timers[key] - dt);
+        });
+      }
+      scoreMultiplier() {
+        return this.timers.doubleScore > 0 ? 2 : 1;
+      }
+      isInvincible() {
+        return this.timers.invincible > 0;
+      }
+      canPhaseWalls() {
+        return this.timers.phase > 0;
+      }
+      isChaos() {
+        return this.timers.chaos > 0;
+      }
+      renderList() {
+        if (!this.active.length) return "None";
+        return this.active
+          .map((a) => `${a.label} (${a.duration.toFixed(1)}s)`)
+          .join(" / ");
+      }
+    }
+
+    class Game {
+      constructor(canvas, minimapCanvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext("2d");
+        this.minimap = minimapCanvas;
+        this.mctx = minimapCanvas.getContext("2d");
+        this.resize();
+
+        this.environment = new Environment(this);
+        this.input = new Input(canvas);
+        this.player = new PlayerSnake(this.input);
+        this.player.init(this.width / 2, this.height / 2);
+
+        this.obstacleManager = new ObstacleManager(this);
+        this.applyTheme(this.randomTheme(), true, true);
+        this.aiManager = new AIManager(this);
+        this.aiManager.spawnInitial(this.obstacleManager.obstacles, [this.player.head]);
+        this.foodManager = new FoodManager(this);
+        this.foodManager.update();
+        this.particles = new ParticleSystem();
+        this.abilitySystem = new AbilitySystem(this.player);
+        this.collisionSystem = new CollisionSystem(this);
+
+        this.score = 0;
+        this.time = 0;
+        this.lastTime = 0;
+        this.running = true;
+        this.toastEl = document.getElementById("toast");
+        this.ui = {
+          score: document.getElementById("score"),
+          length: document.getElementById("length"),
+          time: document.getElementById("time"),
+          abilities: document.getElementById("abilities"),
+          aiStatus: document.getElementById("ai-status"),
+          theme: document.getElementById("theme-name"),
+        };
+        this.uiAccumulator = 0;
+        this.shakeTime = 0;
+        this.shakeDuration = 0;
+        this.shakeIntensity = 0;
+        this.themeTimer = 0;
+        this.nextThemeSwitch = rand(35, 55);
+        this.aiSpawnTimer = 0;
+        this.scheduleNextSpawn();
+
+        window.addEventListener("resize", () => this.resize());
+        canvas.addEventListener("mouseleave", () => this.showToast("回到战场！"));
+        this.renderUI();
+      }
+      resize() {
+        const rect = this.canvas.getBoundingClientRect();
+        this.width = rect.width;
+        this.height = rect.height;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        this.minimapWidth = this.minimap.clientWidth;
+        this.minimapHeight = this.minimap.clientHeight;
+        this.minimap.width = this.minimapWidth;
+        this.minimap.height = this.minimapHeight;
+        if (this.environment) {
+          this.environment.setBounds(this);
+        }
+      }
+      restart() {
+        this.player.init(this.width / 2, this.height / 2);
+        this.applyTheme(this.randomTheme(this.theme), true, true);
+        this.aiManager.spawnInitial(this.obstacleManager.obstacles, [this.player.head]);
+        this.foodManager.foods.length = 0;
+        this.foodManager.update();
+        this.abilitySystem = new AbilitySystem(this.player);
+        this.particles.active.length = 0;
+        this.score = 0;
+        this.time = 0;
+        this.running = true;
+        this.shakeTime = 0;
+        this.scheduleNextSpawn();
+        this.showToast("重新开始");
+        this.renderUI();
+      }
+      showToast(msg) {
+        this.toastEl.textContent = msg;
+        this.toastEl.style.opacity = 1;
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => {
+          this.toastEl.style.opacity = 0;
+        }, 1800);
+      }
+      update(dt) {
+        this.uiAccumulator += dt;
+        if (this.uiAccumulator > 0.2) {
+          this.renderUI();
+          this.uiAccumulator = 0;
+        }
+        this.abilitySystem.update(dt);
+        this.particles.update(dt);
+        this.shakeTime = Math.max(0, this.shakeTime - dt);
+        this.environment.update(dt);
+        this.themeTimer += dt;
+        if (this.themeTimer >= this.nextThemeSwitch) {
+          this.applyTheme(this.randomTheme(this.theme));
+        }
+        if (!this.running) return;
+        this.time += dt;
+        this.aiSpawnTimer += dt;
+        if (this.aiSpawnTimer >= this.nextSpawn) {
+          this.spawnReinforcement();
+        }
+        this.player.update(dt);
+        this.aiManager.update(dt, this);
+        this.foodManager.update();
+        this.handleCollisions();
+      }
+      handleCollisions() {
+        const allSnakes = [this.player, ...this.aiManager.snakes];
+        this.collisionSystem.rebuild(allSnakes);
+
+        // Snake-wall and obstacle collisions
+        for (const snake of allSnakes) {
+          if (!snake.isAlive) continue;
+          const hitWall = this.collisionSystem.collideWalls(snake);
+          const hitObstacle = this.collisionSystem.collideObstacles(
+            snake,
+            this.obstacleManager.obstacles
+          );
+          if (
+            snake === this.player &&
+            this.abilitySystem.canPhaseWalls() &&
+            (hitWall || hitObstacle)
+          ) {
+            if (hitWall) {
+              this.wrapPosition(snake.head);
+            }
+            continue;
+          }
+          if (hitWall || hitObstacle) {
+            snake.isAlive = false;
+            this.particles.burst(snake.head.x, snake.head.y, snake.color);
+            if (snake === this.player) {
+              this.showToast("撞墙了！");
+              this.running = false;
+              this.shake(4, 0.4);
+            } else {
+              this.addScore(25);
+            }
+          }
+        }
+
+        // Snake-snake collisions
+        for (const snake of allSnakes) {
+          if (!snake.isAlive) continue;
+          const collided = this.collisionSystem.collideSnakes(snake);
+          if (!collided) continue;
+          if (snake === this.player) {
+            if (this.abilitySystem.isInvincible()) {
+              if (collided !== this.player && collided.isAlive) {
+                collided.isAlive = false;
+                this.addScore(80);
+                this.particles.burst(collided.head.x, collided.head.y, collided.color);
+                this.shake(6, 0.35);
+              }
+              continue;
+            }
+            snake.isAlive = false;
+            this.showToast("被击败了");
+            this.running = false;
+            this.shake(6, 0.45);
+          } else if (collided === this.player) {
+            if (this.abilitySystem.isInvincible()) {
+              snake.isAlive = false;
+              this.addScore(60);
+              this.particles.burst(snake.head.x, snake.head.y, snake.color);
+              this.shake(5, 0.3);
+            } else {
+              this.player.isAlive = false;
+              this.running = false;
+              this.showToast("被撞倒了");
+              this.shake(5, 0.45);
+            }
+          } else {
+            snake.isAlive = false;
+            this.addScore(40);
+            this.particles.burst(snake.head.x, snake.head.y, snake.color);
+          }
+        }
+
+        // Food consumption
+        for (const food of [...this.foodManager.foods]) {
+          if (!this.player.isAlive) break;
+          if (distSq(food.position, this.player.head) < 200) {
+            const baseScore = food.type === "points" ? 40 : 10;
+            this.addScore(baseScore);
+            this.player.growth += 1.5;
+            this.foodManager.consume(food);
+            this.particles.burst(food.position.x, food.position.y, food.color());
+            if (food.type !== "normal") {
+              this.abilitySystem.trigger(food.type);
+            }
+          }
+          for (const snake of this.aiManager.snakes) {
+            if (!snake.isAlive) continue;
+            if (distSq(food.position, snake.head) < 200) {
+              snake.growth += 1;
+              this.foodManager.consume(food);
+              this.particles.burst(food.position.x, food.position.y, food.color());
+            }
+          }
+        }
+      }
+      randomTheme(exclude = null) {
+        const pool = MAP_THEMES.filter((theme) => theme !== exclude);
+        return pool[randInt(0, pool.length - 1)];
+      }
+      applyTheme(theme, regenerate = true, silent = false) {
+        this.theme = theme;
+        this.environment.setTheme(theme);
+        this.obstacleManager.setTheme(theme);
+        if (regenerate) {
+          const reserved = [];
+          if (this.player) reserved.push(this.player.head);
+          if (this.aiManager) {
+            this.aiManager.snakes.forEach((s) => reserved.push(s.head));
+          }
+          const count = theme?.obstacleCount || 6;
+          this.obstacleManager.generate(count, reserved);
+        }
+        this.themeTimer = 0;
+        this.nextThemeSwitch = rand(30, 55);
+        if (!silent) {
+          this.showToast(`地图切换：${theme.name}`);
+        }
+        if (this.ui) {
+          this.renderUI();
+        }
+      }
+      scheduleNextSpawn() {
+        const difficultyFactor = clamp(1 - this.time / 240, 0.45, 1);
+        this.nextSpawn = rand(9, 16) * difficultyFactor;
+        this.aiSpawnTimer = 0;
+      }
+      spawnReinforcement() {
+        const spawned = this.aiManager.spawnOne(
+          null,
+          this.obstacleManager.obstacles,
+          [this.player.head]
+        );
+        if (spawned) {
+          this.showToast(`新的 AI (${spawned.behavior.toUpperCase()}) 加入战斗`);
+          this.shake(3, 0.25);
+        }
+        this.scheduleNextSpawn();
+      }
+      render() {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        this.ctx.save();
+        if (this.shakeTime > 0 && this.shakeDuration > 0) {
+          const progress = this.shakeTime / this.shakeDuration;
+          const magnitude = this.shakeIntensity * progress;
+          this.ctx.translate(rand(-magnitude, magnitude), rand(-magnitude, magnitude));
+        }
+        this.environment.renderBackground(this.ctx);
+        // Background grid
+        const gridSize = 40;
+        this.ctx.strokeStyle = this.theme?.grid || "rgba(255,255,255,0.03)";
+        this.ctx.lineWidth = 1;
+        for (let x = 0; x < this.width; x += gridSize) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(x, 0);
+          this.ctx.lineTo(x, this.height);
+          this.ctx.stroke();
+        }
+        for (let y = 0; y < this.height; y += gridSize) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(0, y);
+          this.ctx.lineTo(this.width, y);
+          this.ctx.stroke();
+        }
+
+        this.obstacleManager.render(this.ctx);
+        this.foodManager.render(this.ctx);
+        this.aiManager.render(this.ctx);
+        this.player.render(this.ctx);
+        this.particles.render(this.ctx);
+        if (!this.player.isAlive) {
+          this.ctx.fillStyle = "rgba(0,0,0,0.6)";
+          this.ctx.fillRect(0, 0, this.width, this.height);
+          this.ctx.fillStyle = "#fff";
+          this.ctx.font = "bold 32px sans-serif";
+          this.ctx.textAlign = "center";
+          this.ctx.fillText("游戏结束 - 点击重开", this.width / 2, this.height / 2);
+        }
+        this.ctx.restore();
+        this.renderMiniMap();
+      }
+      renderMiniMap() {
+        const width = this.minimap.width;
+        const height = this.minimap.height;
+        const scaleX = width / this.width;
+        const scaleY = height / this.height;
+        this.mctx.clearRect(0, 0, width, height);
+        this.mctx.fillStyle = this.theme?.grid || "rgba(255,255,255,0.05)";
+        for (const ob of this.obstacleManager.obstacles) {
+          this.mctx.fillRect(ob.x * scaleX, ob.y * scaleY, ob.w * scaleX, ob.h * scaleY);
+        }
+        const drawSnakePoint = (snake, color) => {
+          if (!snake.isAlive) return;
+          this.mctx.fillStyle = color;
+          this.mctx.fillRect(
+            snake.head.x * scaleX - 2,
+            snake.head.y * scaleY - 2,
+            4,
+            4
+          );
+        };
+        drawSnakePoint(this.player, cssVar("--player-color"));
+        this.aiManager.snakes.forEach((s) => {
+          const colors = {
+            random: cssVar("--ai-random"),
+            hunter: cssVar("--ai-hunter"),
+            coward: cssVar("--ai-coward"),
+          };
+          drawSnakePoint(s, colors[s.behavior]);
+        });
+      }
+      renderUI() {
+        this.ui.score.textContent = this.score;
+        this.ui.length.textContent = this.player.segments.length;
+        this.ui.time.textContent = `${this.time.toFixed(1)}s`;
+        this.ui.abilities.textContent = this.abilitySystem.renderList();
+        if (this.ui.theme) {
+          this.ui.theme.textContent = this.theme?.name || "--";
+        }
+        const statusHTML = this.aiManager.snakes
+          .map(
+            (ai) =>
+              `<div style="color:${ai.color};">${ai.behavior.toUpperCase()} · ${
+                ai.isAlive ? "存活" : "阵亡"
+              } · 长度 ${ai.segments.length}</div>`
+          )
+          .join("");
+        this.ui.aiStatus.innerHTML = statusHTML || "<div>--</div>";
+      }
+      addScore(amount) {
+        const multiplier = this.abilitySystem.scoreMultiplier();
+        this.score += Math.round(amount * multiplier);
+      }
+      // Subtle camera shake for impactful events
+      shake(intensity = 4, duration = 0.3) {
+        this.shakeIntensity = intensity;
+        this.shakeTime = duration;
+        this.shakeDuration = duration;
+      }
+      // Allow the player to blink through walls during the phase ability
+      wrapPosition(vector) {
+        if (vector.x < 0) vector.x = this.width;
+        if (vector.x > this.width) vector.x = 0;
+        if (vector.y < 0) vector.y = this.height;
+        if (vector.y > this.height) vector.y = 0;
+      }
+      loop = (timestamp) => {
+        const dt = this.lastTime ? (timestamp - this.lastTime) / 1000 : 0;
+        this.lastTime = timestamp;
+        this.update(dt);
+        this.render();
+        requestAnimationFrame(this.loop);
+      };
+      start() {
+        requestAnimationFrame(this.loop);
+        this.canvas.addEventListener("click", () => {
+          if (!this.running) this.restart();
+        });
+      }
+    }
+
+    const canvas = document.getElementById("game");
+    const minimap = document.getElementById("minimap");
+    const game = new Game(canvas, minimap);
+    game.start();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智能日程安排程序</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-Hf0jvJw6vUJwVEx+kt1/3uzMdGII4XESyqSeX5TR1+t0NenE2no0RvrRZtGJPD7WvVManIeZDV4xQdlqzTeWYw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-soft: #e9edff;
+            --secondary: #f72585;
+            --bg: #f6f7fb;
+            --surface: #ffffff;
+            --surface-alt: #f1f3f9;
+            --text: #1f2633;
+            --muted: #6f7789;
+            --border: rgba(31, 38, 51, 0.1);
+            --success: #2ec4b6;
+            --warning: #ffbf69;
+            --danger: #ef476f;
+            --shadow-sm: 0 10px 30px rgba(15, 23, 42, 0.08);
+            --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.12);
+            --radius: 16px;
+            --radius-sm: 12px;
+            --transition: 0.2s ease;
+        }
+
+        [data-theme="dark"] {
+            --primary: #4cc9f0;
+            --primary-soft: rgba(76, 201, 240, 0.2);
+            --bg: #0f172a;
+            --surface: #111b30;
+            --surface-alt: #1b2845;
+            --text: #f8fbff;
+            --muted: #a9b4cc;
+            --border: rgba(255, 255, 255, 0.08);
+            --shadow-sm: 0 20px 45px rgba(0, 0, 0, 0.45);
+            --shadow-lg: 0 30px 80px rgba(0, 0, 0, 0.55);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+        }
+
+        .calendar-app {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 24px 64px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .app-header {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .header-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 24px;
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .branding {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .branding i {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: var(--primary-soft);
+            color: var(--primary);
+            display: grid;
+            place-items: center;
+            font-size: 20px;
+        }
+
+        .branding h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .branding span {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: var(--surface-alt);
+            color: var(--muted);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chip strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .nav-group,
+        .view-switcher,
+        .meta-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .icon-btn,
+        .view-btn,
+        .primary-btn,
+        .ghost-btn {
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .icon-btn {
+            width: 42px;
+            height: 42px;
+            padding: 0;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .icon-btn:hover,
+        .view-btn:hover,
+        .ghost-btn:hover {
+            background: var(--surface-alt);
+        }
+
+        .view-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            min-width: 72px;
+        }
+
+        .view-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+            box-shadow: 0 10px 20px rgba(67, 97, 238, 0.3);
+        }
+
+        .primary-btn {
+            background: var(--primary);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 12px 30px rgba(67, 97, 238, 0.35);
+        }
+
+        .primary-btn:hover {
+            filter: brightness(0.95);
+        }
+
+        .ghost-btn {
+            border: 1px dashed var(--border);
+            color: var(--muted);
+        }
+
+        .search-field {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-field input {
+            width: 100%;
+            padding: 12px 16px 12px 42px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--surface);
+            font-size: 14px;
+            color: var(--text);
+            transition: var(--transition);
+        }
+
+        .search-field input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+        }
+
+        .search-field i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .select {
+            border: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 11px 14px;
+            font-size: 14px;
+            color: var(--text);
+            min-width: 140px;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        aside {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .panel-header h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .mini-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            text-align: center;
+        }
+
+        .mini-calendar span {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .mini-calendar button {
+            border: none;
+            background: none;
+            padding: 8px 0;
+            border-radius: 10px;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--text);
+        }
+
+        .mini-calendar button.today {
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .mini-calendar button.active {
+            background: var(--primary);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 4px;
+        }
+
+        .stat-card {
+            display: flex;
+            gap: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            align-items: center;
+        }
+
+        .stat-card i {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        .stat-card h4 {
+            margin: 0 0 4px;
+            font-size: 15px;
+        }
+
+        .stat-card span {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .view-area {
+            min-height: 600px;
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 24px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .view-pane {
+            display: none;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .view-pane.active {
+            display: block;
+        }
+
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-auto-rows: 120px;
+            gap: 8px;
+            height: 100%;
+        }
+
+        .month-cell {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: var(--surface-alt);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .month-cell:hover {
+            border-color: var(--primary);
+            box-shadow: inset 0 0 0 1px var(--primary);
+        }
+
+        .month-cell header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .month-cell .events {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .event-pill {
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .event-pill i {
+            font-size: 11px;
+        }
+
+        .week-view,
+        .day-view {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: 100%;
+        }
+
+        .all-day-bar {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            gap: 12px;
+            align-items: center;
+        }
+
+        #weekAllDay,
+        #dayAllDay {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .timeline-wrapper {
+            flex: 1;
+            overflow: auto;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: 60px repeat(7, minmax(120px, 1fr));
+            min-width: 800px;
+            position: relative;
+        }
+
+        .timeline-grid.single-day {
+            grid-template-columns: 60px 1fr;
+        }
+
+        .time-label {
+            height: 60px;
+            border-bottom: 1px solid var(--border);
+            padding-right: 8px;
+            text-align: right;
+            font-size: 12px;
+            color: var(--muted);
+            padding-top: 8px;
+        }
+
+        .time-slot {
+            height: 60px;
+            border-bottom: 1px solid var(--border);
+            border-left: 1px solid var(--border);
+            position: relative;
+            background: rgba(31, 38, 51, 0.01);
+        }
+
+        .time-slot:nth-child(odd) {
+            background: rgba(67, 97, 238, 0.02);
+        }
+
+        .event-block {
+            position: absolute;
+            border-radius: 10px;
+            padding: 8px 10px;
+            color: #fff;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2);
+            cursor: grab;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .event-block:active {
+            cursor: grabbing;
+        }
+
+        .event-block small {
+            display: block;
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+        .list-view {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .list-item {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            background: var(--surface-alt);
+        }
+
+        .list-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+        }
+
+        .list-item .meta {
+            font-size: 12px;
+            color: var(--muted);
+            display: flex;
+            gap: 12px;
+        }
+
+        .empty-state {
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 40px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .empty-tag {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .empty-state i {
+            font-size: 32px;
+            margin-bottom: 12px;
+            color: var(--primary);
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-card {
+            background: var(--surface);
+            border-radius: 22px;
+            padding: 24px;
+            width: min(520px, 100%);
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .modal-card h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        input[type="text"],
+        input[type="datetime-local"],
+        input[type="color"],
+        textarea,
+        select {
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--surface-alt);
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .modal-actions .left {
+            display: flex;
+            gap: 8px;
+        }
+
+        .modal-actions .right {
+            display: flex;
+            gap: 12px;
+        }
+
+        .toast-stack {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 2000;
+        }
+
+        .toast {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            min-width: 260px;
+            animation: fadeUp 0.2s ease;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loading-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            z-index: 3000;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--surface);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 1100px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            aside {
+                order: 2;
+            }
+
+            .view-area {
+                order: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .calendar-app {
+                padding: 20px 16px 40px;
+            }
+
+            .header-main {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .meta-controls,
+            .nav-group,
+            .view-switcher {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .search-field {
+                width: 100%;
+                min-width: unset;
+            }
+
+            .view-area {
+                padding: 16px;
+            }
+
+            .timeline-grid {
+                min-width: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-screen" id="loadingScreen" aria-live="polite">
+        <div class="spinner" role="presentation"></div>
+        <p>正在加载您的日程...</p>
+    </div>
+
+    <div class="calendar-app" aria-live="polite">
+        <header class="app-header">
+            <div class="header-main">
+                <div class="branding" aria-label="应用信息">
+                    <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+                    <div>
+                        <h1>智能日程中心</h1>
+                        <span>您的全年效率驾驶舱</span>
+                    </div>
+                </div>
+                <div class="chip">
+                    <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                    <span>当前时间 <strong id="clockDisplay">--:--</strong></span>
+                </div>
+                <div class="nav-group" role="group" aria-label="日期导航">
+                    <button class="icon-btn" data-action="prev" aria-label="上一周期">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button class="icon-btn" data-action="today">今</button>
+                    <button class="icon-btn" data-action="next" aria-label="下一周期">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <div class="chip" id="currentLabel">--</div>
+                </div>
+                <div class="meta-controls">
+                    <div class="search-field">
+                        <i class="fa-solid fa-search" aria-hidden="true"></i>
+                        <input type="search" id="searchInput" placeholder="搜索事件 / 支持快捷键 Ctrl + K" aria-label="搜索事件" />
+                    </div>
+                    <select id="categoryFilter" class="select" aria-label="事件分类过滤">
+                        <option value="all">全部分类</option>
+                    </select>
+                    <button class="icon-btn" id="themeToggle" aria-label="切换主题">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                    <button class="ghost-btn" id="importBtn"><i class="fa-solid fa-file-import"></i> 导入</button>
+                    <button class="ghost-btn" id="exportBtn"><i class="fa-solid fa-file-export"></i> 导出</button>
+                    <button class="primary-btn" id="addEventBtn"><i class="fa-solid fa-plus"></i> 新建事件</button>
+                </div>
+            </div>
+            <div class="view-switcher" role="tablist" aria-label="视图切换">
+                <button class="view-btn active" data-view="month" role="tab">月视图</button>
+                <button class="view-btn" data-view="week" role="tab">周视图</button>
+                <button class="view-btn" data-view="day" role="tab">日视图</button>
+                <button class="view-btn" data-view="list" role="tab">任务列表</button>
+            </div>
+        </header>
+
+        <main>
+            <aside>
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3>迷你日历</h3>
+                        <div class="nav-group">
+                            <button class="icon-btn" data-action="mini-prev" aria-label="迷你日历上一月"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button class="icon-btn" data-action="mini-next" aria-label="迷你日历下一月"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <p id="miniMonthLabel" style="margin-top:0; color: var(--muted); font-size: 14px;">--</p>
+                    <div class="mini-calendar" id="miniCalendar" aria-label="迷你日历"></div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3>分类标签</h3>
+                        <button class="icon-btn" id="manageCategories" aria-label="管理分类"><i class="fa-solid fa-pen"></i></button>
+                    </div>
+                    <div class="legend" id="categoryLegend"></div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3>效率概览</h3>
+                        <span style="color: var(--muted); font-size: 13px;">本周统计</span>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fa-solid fa-calendar-check"></i>
+                        <div>
+                            <h4>已排事件</h4>
+                            <span id="statScheduled">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fa-solid fa-bolt"></i>
+                        <div>
+                            <h4>待办任务</h4>
+                            <span id="statPending">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                        <div>
+                            <h4>今日总时长</h4>
+                            <span id="statToday">0h</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel" aria-live="polite">
+                    <div class="panel-header">
+                        <h3>快捷键</h3>
+                        <span style="color: var(--muted); font-size: 13px;">提高操作效率</span>
+                    </div>
+                    <ul style="list-style:none; padding-left:0; margin:0; display:flex; flex-direction:column; gap:8px; font-size:13px; color:var(--muted);">
+                        <li><strong>Ctrl + N</strong> 新建事件</li>
+                        <li><strong>Ctrl + K</strong> 聚焦搜索</li>
+                        <li><strong>Shift + M/W/D/L</strong> 切换视图</li>
+                        <li><strong>← / →</strong> 浏览日期</li>
+                    </ul>
+                </section>
+            </aside>
+
+            <section class="view-area" tabindex="0">
+                <div id="monthView" class="view-pane active" role="tabpanel" aria-label="月视图">
+                    <div class="month-grid" id="monthGrid"></div>
+                </div>
+                <div id="weekView" class="view-pane" role="tabpanel" aria-label="周视图">
+                    <div class="all-day-bar">
+                        <strong style="color:var(--muted);">全天</strong>
+                        <div id="weekAllDay"></div>
+                    </div>
+                    <div class="timeline-wrapper">
+                        <div class="timeline-grid" id="weekTimeline"></div>
+                    </div>
+                </div>
+                <div id="dayView" class="view-pane" role="tabpanel" aria-label="日视图">
+                    <div class="all-day-bar">
+                        <strong style="color:var(--muted);">全天</strong>
+                        <div id="dayAllDay"></div>
+                    </div>
+                    <div class="timeline-wrapper">
+                        <div class="timeline-grid single-day" id="dayTimeline"></div>
+                    </div>
+                </div>
+                <div id="listView" class="view-pane" role="tabpanel" aria-label="任务列表视图">
+                    <div class="list-view" id="taskList"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="modal" id="eventModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-card">
+            <div class="panel-header" style="margin:0">
+                <h2 id="modalTitle">新建事件</h2>
+                <button class="icon-btn" id="closeModal" aria-label="关闭弹窗"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="eventForm">
+                <input type="hidden" id="eventId" />
+                <label>
+                    事件标题
+                    <input type="text" id="eventTitle" required placeholder="如：项目会议" />
+                </label>
+                <label>
+                    描述信息
+                    <textarea id="eventDescription" placeholder="补充细节、会议链接等"></textarea>
+                </label>
+                <div class="form-grid">
+                    <label>
+                        开始时间
+                        <input type="datetime-local" id="eventStart" required />
+                    </label>
+                    <label>
+                        结束时间
+                        <input type="datetime-local" id="eventEnd" required />
+                    </label>
+                    <label>
+                        分类
+                        <select id="eventCategory"></select>
+                    </label>
+                    <label>
+                        颜色
+                        <input type="color" id="eventColor" />
+                    </label>
+                    <label>
+                        重复频率
+                        <select id="eventRepeat">
+                            <option value="none">不重复</option>
+                            <option value="daily">每日</option>
+                            <option value="weekly">每周</option>
+                            <option value="monthly">每月</option>
+                        </select>
+                    </label>
+                    <label>
+                        提醒
+                        <select id="eventReminder">
+                            <option value="0">不提醒</option>
+                            <option value="5">提前5分钟</option>
+                            <option value="15">提前15分钟</option>
+                            <option value="30">提前30分钟</option>
+                            <option value="60">提前1小时</option>
+                            <option value="1440">提前1天</option>
+                        </select>
+                    </label>
+                </div>
+                <label style="flex-direction:row; align-items:center; gap:10px;">
+                    <input type="checkbox" id="eventAllDay" /> 全天事件
+                </label>
+                <label style="flex-direction:row; align-items:center; gap:10px;">
+                    <input type="checkbox" id="eventCompleted" /> 标记为完成（任务列表）
+                </label>
+                <div class="modal-actions">
+                    <div class="left">
+                        <button type="button" class="ghost-btn" id="deleteEventBtn"><i class="fa-solid fa-trash"></i> 删除</button>
+                    </div>
+                    <div class="right">
+                        <button type="button" class="ghost-btn" id="duplicateBtn">复制</button>
+                        <button type="submit" class="primary-btn">保存</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <input type="file" id="importInput" accept="application/json" hidden />
+    <div class="toast-stack" id="toastStack" aria-live="assertive"></div>
+
+    <script>
+        const STORAGE_KEY = 'smart_planner_events_v1';
+        const SETTINGS_KEY = 'smart_planner_settings_v1';
+        const createId = () => {
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                return crypto.randomUUID();
+            }
+            return 'evt-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+        };
+        const DEFAULT_CATEGORIES = [
+            { id: 'work', label: '工作', color: '#4361ee' },
+            { id: 'meeting', label: '会议', color: '#f97316' },
+            { id: 'personal', label: '个人', color: '#f72585' },
+            { id: 'learning', label: '学习', color: '#10b981' },
+            { id: 'task', label: '任务', color: '#8338ec' }
+        ];
+
+        const SLOT_HEIGHT = 60;
+        const MINUTE_HEIGHT = SLOT_HEIGHT / 60;
+        const WEEK_DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+        class CalendarApp {
+            constructor() {
+                this.state = {
+                    events: [],
+                    view: 'month',
+                    selectedDate: new Date(),
+                    miniDate: new Date(),
+                    categories: [...DEFAULT_CATEGORIES],
+                    filters: { search: '', category: 'all' },
+                    remindersFired: {},
+                    settings: { theme: 'light' }
+                };
+
+                this.cacheDom();
+                this.bindEvents();
+                this.load();
+                this.render();
+                this.startClock();
+                this.startReminderWatcher();
+                setTimeout(() => {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                }, 650);
+            }
+
+            cacheDom() {
+                this.monthGrid = document.getElementById('monthGrid');
+                this.weekTimeline = document.getElementById('weekTimeline');
+                this.dayTimeline = document.getElementById('dayTimeline');
+                this.weekAllDay = document.getElementById('weekAllDay');
+                this.dayAllDay = document.getElementById('dayAllDay');
+                this.taskList = document.getElementById('taskList');
+                this.viewButtons = document.querySelectorAll('.view-btn');
+                this.currentLabel = document.getElementById('currentLabel');
+                this.miniCalendar = document.getElementById('miniCalendar');
+                this.miniMonthLabel = document.getElementById('miniMonthLabel');
+                this.categoryLegend = document.getElementById('categoryLegend');
+                this.categoryFilter = document.getElementById('categoryFilter');
+                this.searchInput = document.getElementById('searchInput');
+                this.eventModal = document.getElementById('eventModal');
+                this.eventForm = document.getElementById('eventForm');
+                this.toastStack = document.getElementById('toastStack');
+                this.importInput = document.getElementById('importInput');
+                this.statScheduled = document.getElementById('statScheduled');
+                this.statPending = document.getElementById('statPending');
+                this.statToday = document.getElementById('statToday');
+            }
+
+            bindEvents() {
+                document.querySelectorAll('[data-action="prev"]').forEach(btn => btn.addEventListener('click', () => this.shiftPeriod(-1)));
+                document.querySelectorAll('[data-action="next"]').forEach(btn => btn.addEventListener('click', () => this.shiftPeriod(1)));
+                const todayBtn = document.querySelector('[data-action="today"]');
+                if (todayBtn) {
+                    todayBtn.addEventListener('click', () => {
+                        this.state.selectedDate = new Date();
+                        this.render();
+                    });
+                }
+                const miniPrev = document.querySelector('[data-action="mini-prev"]');
+                const miniNext = document.querySelector('[data-action="mini-next"]');
+                if (miniPrev) {
+                    miniPrev.addEventListener('click', () => {
+                        this.state.miniDate = this.addMonths(this.state.miniDate, -1);
+                        this.renderMiniCalendar();
+                    });
+                }
+                if (miniNext) {
+                    miniNext.addEventListener('click', () => {
+                        this.state.miniDate = this.addMonths(this.state.miniDate, 1);
+                        this.renderMiniCalendar();
+                    });
+                }
+                this.viewButtons.forEach(btn => btn.addEventListener('click', () => this.switchView(btn.dataset.view)));
+                document.getElementById('addEventBtn').addEventListener('click', () => this.openModal());
+                document.getElementById('closeModal').addEventListener('click', () => this.closeModal());
+                this.eventModal.addEventListener('click', (e) => {
+                    if (e.target === this.eventModal) this.closeModal();
+                });
+                this.eventForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveEvent();
+                });
+                document.getElementById('eventCategory').addEventListener('change', (e) => {
+                    const category = this.getCategory(e.target.value);
+                    if (category) {
+                        document.getElementById('eventColor').value = category.color;
+                    }
+                });
+                document.getElementById('deleteEventBtn').addEventListener('click', () => this.deleteEvent());
+                document.getElementById('duplicateBtn').addEventListener('click', () => this.duplicateEvent());
+                this.categoryFilter.addEventListener('change', (e) => {
+                    this.state.filters.category = e.target.value;
+                    this.render();
+                });
+                this.searchInput.addEventListener('input', (e) => {
+                    this.state.filters.search = e.target.value.toLowerCase();
+                    this.render();
+                });
+                document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
+                document.getElementById('exportBtn').addEventListener('click', () => this.exportData());
+                document.getElementById('importBtn').addEventListener('click', () => this.importInput.click());
+                this.importInput.addEventListener('change', (e) => this.importData(e));
+                document.getElementById('eventAllDay').addEventListener('change', (e) => this.toggleAllDay(e.target.checked));
+                document.addEventListener('keydown', (e) => this.handleShortcuts(e));
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.eventModal.classList.contains('open')) {
+                        this.closeModal();
+                    }
+                });
+                window.addEventListener('resize', () => this.render());
+                document.getElementById('manageCategories').addEventListener('click', () => this.manageCategories());
+            }
+
+            load() {
+                const savedEvents = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                const savedSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+                this.state.events = savedEvents.map(evt => ({ ...evt, startTime: new Date(evt.startTime), endTime: new Date(evt.endTime), completed: !!evt.completed }));
+                if (!this.state.events.length) {
+                    this.state.events = this.sampleEvents();
+                }
+                if (savedSettings.categories) this.state.categories = savedSettings.categories;
+                const categorySet = new Set(this.state.categories.map(cat => cat.id));
+                this.state.events.forEach(evt => {
+                    if (!categorySet.has(evt.category)) {
+                        this.state.categories.push({ id: evt.category, label: evt.category, color: evt.color || '#4361ee' });
+                        categorySet.add(evt.category);
+                    }
+                });
+                if (savedSettings.theme) this.state.settings.theme = savedSettings.theme;
+                document.body.dataset.theme = this.state.settings.theme;
+                this.updateThemeToggleIcon();
+                this.populateCategorySelect();
+            }
+
+            sampleEvents() {
+                const now = new Date();
+                const base = now.getDate();
+                return [
+                    {
+                        id: createId(),
+                        title: '产品评审会议',
+                        description: '输出新版原型评审结论',
+                        startTime: new Date(now.getFullYear(), now.getMonth(), base, 10, 0),
+                        endTime: new Date(now.getFullYear(), now.getMonth(), base, 11, 30),
+                        category: 'work',
+                        color: '#4361ee',
+                        isAllDay: false,
+                        repeat: 'weekly',
+                        reminder: 30,
+                        completed: false
+                    },
+                    {
+                        id: createId(),
+                        title: '晨间冥想',
+                        description: '坚持 20 分钟呼吸冥想',
+                        startTime: new Date(now.getFullYear(), now.getMonth(), base, 7, 0),
+                        endTime: new Date(now.getFullYear(), now.getMonth(), base, 7, 30),
+                        category: 'personal',
+                        color: '#f72585',
+                        isAllDay: false,
+                        repeat: 'daily',
+                        reminder: 15,
+                        completed: false
+                    },
+                    {
+                        id: createId(),
+                        title: 'OKR 复盘',
+                        description: 'Q1 OKR 进展复盘',
+                        startTime: new Date(now.getFullYear(), now.getMonth(), base + 1, 0, 0),
+                        endTime: new Date(now.getFullYear(), now.getMonth(), base + 1, 23, 59),
+                        category: 'work',
+                        color: '#4361ee',
+                        isAllDay: true,
+                        repeat: 'monthly',
+                        reminder: 1440,
+                        completed: false
+                    },
+                    {
+                        id: createId(),
+                        title: '学习 TypeScript',
+                        description: '完成类型体操练习',
+                        startTime: new Date(now.getFullYear(), now.getMonth(), base + 2, 20, 0),
+                        endTime: new Date(now.getFullYear(), now.getMonth(), base + 2, 22, 0),
+                        category: 'learning',
+                        color: '#10b981',
+                        isAllDay: false,
+                        repeat: 'none',
+                        reminder: 60,
+                        completed: false
+                    },
+                    {
+                        id: createId(),
+                        title: '采购周物资',
+                        description: '家庭食材采购清单',
+                        startTime: new Date(now.getFullYear(), now.getMonth(), base - 1, 18, 0),
+                        endTime: new Date(now.getFullYear(), now.getMonth(), base - 1, 19, 0),
+                        category: 'task',
+                        color: '#8338ec',
+                        isAllDay: false,
+                        repeat: 'weekly',
+                        reminder: 30,
+                        completed: false
+                    }
+                ];
+            }
+
+            save() {
+                const serializable = this.state.events.map(evt => ({ ...evt, startTime: evt.startTime.toISOString(), endTime: evt.endTime.toISOString() }));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify({ categories: this.state.categories, theme: this.state.settings.theme }));
+            }
+
+            render() {
+                this.renderHeader();
+                this.renderMonthView();
+                this.renderWeekView();
+                this.renderDayView();
+                this.renderTaskList();
+                this.renderMiniCalendar();
+                this.renderLegend();
+                this.renderStats();
+                this.highlightActiveView();
+            }
+
+            renderHeader() {
+                const label = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long' }).format(this.state.selectedDate);
+                this.currentLabel.textContent = label;
+            }
+
+            renderLegend() {
+                this.categoryLegend.innerHTML = '';
+                this.state.categories.forEach(cat => {
+                    const row = document.createElement('div');
+                    row.className = 'legend-item';
+                    row.innerHTML = `
+                        <span style="display:flex; align-items:center; gap:8px;">
+                            <span class="legend-dot" style="background:${cat.color}"></span>
+                            ${cat.label}
+                        </span>
+                        <span style="color:var(--muted); font-size:12px;">${this.countByCategory(cat.id)} 项</span>
+                    `;
+                    this.categoryLegend.appendChild(row);
+                });
+            }
+
+            renderMiniCalendar() {
+                this.miniCalendar.innerHTML = '';
+                const monthStart = new Date(this.state.miniDate.getFullYear(), this.state.miniDate.getMonth(), 1);
+                this.miniMonthLabel.textContent = new Intl.DateTimeFormat('zh-CN', { month: 'long', year: 'numeric' }).format(this.state.miniDate);
+                const firstDay = (monthStart.getDay() + 6) % 7; // Monday first
+                const daysInMonth = new Date(this.state.miniDate.getFullYear(), this.state.miniDate.getMonth() + 1, 0).getDate();
+                WEEK_DAYS.forEach(day => {
+                    const label = document.createElement('span');
+                    label.textContent = day;
+                    this.miniCalendar.appendChild(label);
+                });
+                for (let i = 0; i < firstDay; i++) {
+                    const placeholder = document.createElement('span');
+                    this.miniCalendar.appendChild(placeholder);
+                }
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const btn = document.createElement('button');
+                    btn.textContent = day;
+                    const date = new Date(this.state.miniDate.getFullYear(), this.state.miniDate.getMonth(), day);
+                    if (this.isSameDay(date, new Date())) btn.classList.add('today');
+                    if (this.isSameDay(date, this.state.selectedDate)) btn.classList.add('active');
+                    btn.addEventListener('click', () => {
+                        this.state.selectedDate = date;
+                        this.render();
+                    });
+                    this.miniCalendar.appendChild(btn);
+                }
+            }
+
+            renderMonthView() {
+                this.monthGrid.innerHTML = '';
+                const start = this.startOfWeek(new Date(this.state.selectedDate.getFullYear(), this.state.selectedDate.getMonth(), 1));
+                for (let i = 0; i < 42; i++) {
+                    const dayDate = this.addDays(start, i);
+                    const cell = document.createElement('div');
+                    cell.className = 'month-cell';
+                    if (dayDate.getMonth() !== this.state.selectedDate.getMonth()) {
+                        cell.style.opacity = 0.4;
+                    }
+                    if (this.isSameDay(dayDate, new Date())) {
+                        cell.style.borderColor = 'var(--primary)';
+                        cell.style.background = 'rgba(67, 97, 238, 0.05)';
+                    }
+                    cell.innerHTML = `
+                        <header>
+                            <span>${dayDate.getDate()}</span>
+                            <span style="font-size:12px; color:var(--muted);">${WEEK_DAYS[(dayDate.getDay() + 6) % 7]}</span>
+                        </header>
+                        <div class="events"></div>
+                    `;
+                    const list = cell.querySelector('.events');
+                    const events = this.getEventsForDay(dayDate).slice(0, 3);
+                    events.forEach(evt => {
+                        const pill = document.createElement('div');
+                        pill.className = 'event-pill';
+                        pill.style.background = evt.color;
+                        pill.innerHTML = `<i class="fa-solid fa-circle" aria-hidden="true"></i> ${evt.title}`;
+                        pill.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            this.openModal(evt.sourceEvent);
+                        });
+                        list.appendChild(pill);
+                    });
+                    cell.addEventListener('dblclick', () => this.openModal(null, dayDate));
+                    cell.addEventListener('click', () => {
+                        this.state.selectedDate = dayDate;
+                        this.switchView('day');
+                    });
+                    this.monthGrid.appendChild(cell);
+                }
+            }
+
+            renderWeekView() {
+                this.weekTimeline.innerHTML = '';
+                this.weekAllDay.innerHTML = '';
+                const start = this.startOfWeek(this.state.selectedDate);
+                const times = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+                times.forEach(time => {
+                    const label = document.createElement('div');
+                    label.className = 'time-label';
+                    label.textContent = time;
+                    this.weekTimeline.appendChild(label);
+                    for (let day = 0; day < 7; day++) {
+                        const slot = document.createElement('div');
+                        slot.className = 'time-slot';
+                        if (day === 0) slot.style.border-left = '1px solid var(--border)';
+                        this.weekTimeline.appendChild(slot);
+                    }
+                });
+                const rangeStart = this.addHours(start, 0);
+                const rangeEnd = this.addDays(rangeStart, 7);
+                const events = this.getEventsInRange(rangeStart, rangeEnd);
+                const slotWidth = this.weekTimeline.querySelector('.time-slot')?.offsetWidth || 140;
+                events.filter(evt => evt.isAllDay).forEach(evt => {
+                    const pill = document.createElement('div');
+                    pill.className = 'event-pill';
+                    pill.style.background = evt.color;
+                    pill.textContent = `${this.dayLabel(evt.startTime)} · ${evt.title}`;
+                    pill.addEventListener('click', () => this.openModal(evt.sourceEvent));
+                    this.weekAllDay.appendChild(pill);
+                });
+                if (!this.weekAllDay.children.length) {
+                    this.weekAllDay.appendChild(this.createEmptyTag('暂无全天事件'));
+                }
+                events.filter(evt => !evt.isAllDay).forEach(evt => {
+                    const dayIndex = (evt.startTime.getDay() + 6) % 7;
+                    const offsetTop = (evt.startTime.getHours() * SLOT_HEIGHT) + (evt.startTime.getMinutes() * MINUTE_HEIGHT);
+                    const duration = (evt.endTime - evt.startTime) / (1000 * 60);
+                    const block = this.createEventBlock(evt, offsetTop, duration, dayIndex, slotWidth, 'week');
+                    this.weekTimeline.appendChild(block);
+                });
+            }
+
+            renderDayView() {
+                this.dayTimeline.innerHTML = '';
+                this.dayAllDay.innerHTML = '';
+                const date = this.state.selectedDate;
+                const times = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+                times.forEach(time => {
+                    const label = document.createElement('div');
+                    label.className = 'time-label';
+                    label.textContent = time;
+                    this.dayTimeline.appendChild(label);
+                    const slot = document.createElement('div');
+                    slot.className = 'time-slot';
+                    this.dayTimeline.appendChild(slot);
+                });
+                const rangeStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0);
+                const rangeEnd = this.addDays(rangeStart, 1);
+                const events = this.getEventsInRange(rangeStart, rangeEnd);
+                const slotWidth = this.dayTimeline.querySelector('.time-slot')?.offsetWidth || 260;
+                events.filter(evt => evt.isAllDay).forEach(evt => {
+                    const pill = document.createElement('div');
+                    pill.className = 'event-pill';
+                    pill.style.background = evt.color;
+                    pill.textContent = evt.title;
+                    pill.addEventListener('click', () => this.openModal(evt.sourceEvent));
+                    this.dayAllDay.appendChild(pill);
+                });
+                if (!this.dayAllDay.children.length) {
+                    this.dayAllDay.appendChild(this.createEmptyTag('暂无全天事件'));
+                }
+                events.filter(evt => !evt.isAllDay).forEach(evt => {
+                    const offsetTop = (evt.startTime.getHours() * SLOT_HEIGHT) + (evt.startTime.getMinutes() * MINUTE_HEIGHT);
+                    const duration = (evt.endTime - evt.startTime) / (1000 * 60);
+                    const block = this.createEventBlock(evt, offsetTop, duration, 0, slotWidth, 'day');
+                    this.dayTimeline.appendChild(block);
+                });
+            }
+
+            renderTaskList() {
+                this.taskList.innerHTML = '';
+                const events = this.getFilteredEvents().sort((a, b) => a.startTime - b.startTime);
+                if (!events.length) {
+                    this.taskList.appendChild(this.createEmptyState('还没有事件，点击“新建事件”开始安排吧'));
+                    return;
+                }
+                events.forEach(evt => {
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = !!evt.completed;
+                    checkbox.addEventListener('change', () => {
+                        evt.sourceEvent.completed = checkbox.checked;
+                        this.save();
+                        this.render();
+                    });
+                    const content = document.createElement('div');
+                    const title = document.createElement('strong');
+                    title.textContent = evt.title;
+                    const meta = document.createElement('div');
+                    meta.className = 'meta';
+                    meta.innerHTML = `
+                        <span><i class="fa-regular fa-clock"></i> ${this.fullDateLabel(evt.startTime)}</span>
+                        <span><i class="fa-solid fa-tag"></i> ${this.getCategory(evt.category)?.label || '未分类'}</span>
+                        ${evt.repeat !== 'none' ? '<span><i class="fa-solid fa-repeat"></i> ' + this.repeatLabel(evt.repeat) + '</span>' : ''}
+                    `;
+                    content.appendChild(title);
+                    content.appendChild(meta);
+                    const actions = document.createElement('div');
+                    actions.style.marginLeft = 'auto';
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'ghost-btn';
+                    editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+                    editBtn.addEventListener('click', () => this.openModal(evt.sourceEvent));
+                    actions.appendChild(editBtn);
+                    item.appendChild(checkbox);
+                    item.appendChild(content);
+                    item.appendChild(actions);
+                    this.taskList.appendChild(item);
+                });
+            }
+
+            createEmptyState(message) {
+                const box = document.createElement('div');
+                box.className = 'empty-state';
+                box.innerHTML = `<i class="fa-regular fa-face-smile"></i><p>${message}</p>`;
+                return box;
+            }
+
+            createEmptyTag(message) {
+                const span = document.createElement('span');
+                span.className = 'empty-tag';
+                span.textContent = message;
+                return span;
+            }
+
+            createEventBlock(evt, offsetTop, durationMinutes, dayIndex, slotWidth, view) {
+                const block = document.createElement('div');
+                block.className = 'event-block';
+                const minutesHeight = MINUTE_HEIGHT;
+                block.style.top = `${offsetTop}px`;
+                block.style.height = `${Math.max(durationMinutes * minutesHeight, 30)}px`;
+                const widthBase = slotWidth || 140;
+                const usableWidth = Math.max(widthBase - 16, 90);
+                if (view === 'week') {
+                    block.style.left = `${60 + dayIndex * widthBase + 8}px`;
+                } else {
+                    block.style.left = '68px';
+                }
+                block.style.width = `${usableWidth}px`;
+                block.style.background = evt.color;
+                block.innerHTML = `<small>${this.timeLabel(evt.startTime)} - ${this.timeLabel(evt.endTime)}</small><strong>${evt.title}</strong>`;
+                block.addEventListener('dblclick', () => this.openModal(evt.sourceEvent));
+                block.dataset.id = evt.sourceEvent.id;
+                block.dataset.view = view;
+                this.makeDraggable(block);
+                return block;
+            }
+
+            makeDraggable(el) {
+                let startY = 0;
+                let startTime = 0;
+                const onPointerDown = (e) => {
+                    if (e.button !== 0) return;
+                    startY = e.clientY;
+                    const event = this.state.events.find(evt => evt.id === el.dataset.id);
+                    if (!event || event.isAllDay) return;
+                    startTime = event.startTime.getTime();
+                    el.setPointerCapture(e.pointerId);
+                    el.dataset.dragging = 'true';
+                    const onPointerMove = (moveEvt) => {
+                        if (el.dataset.dragging !== 'true') return;
+                        const delta = moveEvt.clientY - startY;
+                        el.style.transform = `translateY(${delta}px)`;
+                    };
+                    const onPointerUp = (upEvt) => {
+                        if (el.dataset.dragging !== 'true') return;
+                        el.releasePointerCapture(upEvt.pointerId);
+                        el.dataset.dragging = 'false';
+                        el.style.transform = '';
+                        const deltaMinutes = Math.round((upEvt.clientY - startY) / MINUTE_HEIGHT / 15) * 15;
+                        if (deltaMinutes !== 0) {
+                            event.startTime = new Date(startTime + deltaMinutes * 60000);
+                            event.endTime = new Date(event.endTime.getTime() + deltaMinutes * 60000);
+                            this.save();
+                            this.render();
+                            this.notify('已调整事件时间');
+                        }
+                        el.removeEventListener('pointermove', onPointerMove);
+                        el.removeEventListener('pointerup', onPointerUp);
+                    };
+                    el.addEventListener('pointermove', onPointerMove);
+                    el.addEventListener('pointerup', onPointerUp);
+                };
+                el.addEventListener('pointerdown', onPointerDown);
+            }
+
+            openModal(event = null, presetDate = null) {
+                this.eventForm.reset();
+                document.getElementById('eventId').value = event ? event.id : '';
+                document.getElementById('eventTitle').value = event?.title || '';
+                document.getElementById('eventDescription').value = event?.description || '';
+                document.getElementById('eventCategory').value = event?.category || this.state.categories[0].id;
+                document.getElementById('eventColor').value = event?.color || this.getCategory(document.getElementById('eventCategory').value).color;
+                document.getElementById('eventRepeat').value = event?.repeat || 'none';
+                document.getElementById('eventReminder').value = String(event?.reminder ?? 30);
+                document.getElementById('eventAllDay').checked = event?.isAllDay || false;
+                document.getElementById('eventCompleted').checked = event?.completed || false;
+                const start = event?.startTime || (presetDate ? new Date(presetDate.getFullYear(), presetDate.getMonth(), presetDate.getDate(), 9, 0) : new Date());
+                const end = event?.endTime || this.addHours(start, 1);
+                document.getElementById('eventStart').value = this.toInputValue(start);
+                document.getElementById('eventEnd').value = this.toInputValue(end);
+                document.getElementById('deleteEventBtn').style.display = event ? 'inline-flex' : 'none';
+                document.getElementById('modalTitle').textContent = event ? '编辑事件' : '新建事件';
+                this.eventModal.classList.add('open');
+                document.getElementById('eventTitle').focus();
+            }
+
+            closeModal() {
+                this.eventModal.classList.remove('open');
+            }
+
+            saveEvent() {
+                const id = document.getElementById('eventId').value || createId();
+                const title = document.getElementById('eventTitle').value.trim();
+                const description = document.getElementById('eventDescription').value.trim();
+                const start = new Date(document.getElementById('eventStart').value);
+                const end = new Date(document.getElementById('eventEnd').value);
+                const category = document.getElementById('eventCategory').value;
+                const color = document.getElementById('eventColor').value || this.getCategory(category)?.color;
+                const repeat = document.getElementById('eventRepeat').value;
+                const reminder = Number(document.getElementById('eventReminder').value);
+                const isAllDay = document.getElementById('eventAllDay').checked;
+                const completed = document.getElementById('eventCompleted').checked;
+
+                if (end <= start) {
+                    this.notify('结束时间需晚于开始时间', 'error');
+                    return;
+                }
+
+                const payload = { id, title, description, startTime: start, endTime: end, category, color, repeat, reminder, isAllDay, completed };
+                const existingIndex = this.state.events.findIndex(evt => evt.id === id);
+                if (existingIndex >= 0) {
+                    this.state.events[existingIndex] = payload;
+                } else {
+                    this.state.events.push(payload);
+                }
+                this.save();
+                this.render();
+                this.closeModal();
+                this.notify('事件已保存');
+            }
+
+            deleteEvent() {
+                const id = document.getElementById('eventId').value;
+                if (!id) return this.closeModal();
+                if (confirm('确认删除该事件？')) {
+                    this.state.events = this.state.events.filter(evt => evt.id !== id);
+                    this.save();
+                    this.render();
+                    this.closeModal();
+                    this.notify('事件已删除');
+                }
+            }
+
+            duplicateEvent() {
+                const id = document.getElementById('eventId').value;
+                if (!id) return;
+                const event = this.state.events.find(evt => evt.id === id);
+                if (!event) return;
+                const clone = {
+                    ...event,
+                    id: createId(),
+                    title: `${event.title}（副本）`,
+                    startTime: new Date(event.startTime.getTime() + 3600000),
+                    endTime: new Date(event.endTime.getTime() + 3600000),
+                    completed: false
+                };
+                this.state.events.push(clone);
+                this.save();
+                this.render();
+                this.notify('已复制事件');
+            }
+
+            shiftPeriod(step) {
+                const current = this.state.selectedDate;
+                if (this.state.view === 'month') {
+                    this.state.selectedDate = this.addMonths(current, step);
+                } else if (this.state.view === 'week') {
+                    this.state.selectedDate = this.addDays(current, step * 7);
+                } else {
+                    this.state.selectedDate = this.addDays(current, step);
+                }
+                this.render();
+            }
+
+            handleShortcuts(e) {
+                const targetTag = (e.target?.tagName || '').toUpperCase();
+                const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(targetTag);
+                if (e.ctrlKey && e.key.toLowerCase() === 'n') {
+                    e.preventDefault();
+                    this.openModal();
+                }
+                if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+                    e.preventDefault();
+                    this.searchInput.focus();
+                    this.searchInput.select();
+                }
+                if (e.shiftKey) {
+                    const key = e.key.toLowerCase();
+                    if (['m', 'w', 'd', 'l'].includes(key)) {
+                        e.preventDefault();
+                        const map = { m: 'month', w: 'week', d: 'day', l: 'list' };
+                        this.switchView(map[key]);
+                    }
+                }
+                if (!isTyping && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    e.preventDefault();
+                    this.shiftPeriod(e.key === 'ArrowLeft' ? -1 : 1);
+                }
+            }
+
+            switchView(view, skipRender = false) {
+                this.state.view = view;
+                if (!skipRender) this.render();
+                this.highlightActiveView();
+            }
+
+            highlightActiveView() {
+                this.viewButtons.forEach(btn => {
+                    const active = btn.dataset.view === this.state.view;
+                    btn.classList.toggle('active', active);
+                    document.getElementById(`${btn.dataset.view}View`).classList.toggle('active', active);
+                });
+                const needsReflow = this.state.view;
+                if (needsReflow === 'week') {
+                    requestAnimationFrame(() => this.renderWeekView());
+                } else if (needsReflow === 'day') {
+                    requestAnimationFrame(() => this.renderDayView());
+                }
+            }
+
+            toggleTheme() {
+                const next = this.state.settings.theme === 'light' ? 'dark' : 'light';
+                this.state.settings.theme = next;
+                document.body.dataset.theme = next;
+                this.updateThemeToggleIcon();
+                this.save();
+            }
+
+            toggleAllDay(isAllDay) {
+                if (isAllDay) {
+                    const start = new Date(document.getElementById('eventStart').value);
+                    if (isNaN(start)) return;
+                    start.setHours(0, 0, 0, 0);
+                    document.getElementById('eventStart').value = this.toInputValue(start);
+                    const end = new Date(start);
+                    end.setHours(23, 59, 0, 0);
+                    document.getElementById('eventEnd').value = this.toInputValue(end);
+                }
+            }
+
+            manageCategories() {
+                const name = prompt('请输入新的分类名称（如：健身）');
+                if (!name) return;
+                const color = prompt('请输入该分类的品牌色（格式 #RRGGBB）', '#4361ee');
+                if (!color || !/^#([0-9a-f]{6})$/i.test(color.trim())) {
+                    this.notify('颜色格式不正确，请使用 #RRGGBB', 'error');
+                    return;
+                }
+                const id = name.trim().toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+                this.state.categories.push({ id, label: name.trim(), color: color.trim() });
+                this.populateCategorySelect();
+                this.save();
+                this.renderLegend();
+                this.notify('分类已创建');
+            }
+
+            getEventsForDay(date) {
+                const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                const end = this.addDays(start, 1);
+                return this.getEventsInRange(start, end);
+            }
+
+            getEventsInRange(start, end) {
+                return this.applyFilters(this.getOccurrencesInRange(start, end));
+            }
+
+            getOccurrencesInRange(start, end) {
+                const results = [];
+                this.state.events.forEach(evt => {
+                    this.expandEvent(evt, start, end).forEach(occ => results.push(occ));
+                });
+                return results;
+            }
+
+            expandEvent(evt, rangeStart, rangeEnd) {
+                const occurrences = [];
+                const stepMap = { none: 0, daily: 1, weekly: 7, monthly: 30 };
+                if (evt.repeat === 'none') {
+                    if (evt.endTime > rangeStart && evt.startTime < rangeEnd) {
+                        occurrences.push({ ...evt, sourceEvent: evt });
+                    }
+                    return occurrences;
+                }
+                const step = stepMap[evt.repeat];
+                let cursor = new Date(evt.startTime);
+                let cursorEnd = new Date(evt.endTime);
+                while (cursorEnd < rangeStart) {
+                    if (evt.repeat === 'monthly') {
+                        cursor = this.addMonths(cursor, 1);
+                        cursorEnd = this.addMonths(cursorEnd, 1);
+                    } else {
+                        cursor = this.addDays(cursor, step);
+                        cursorEnd = this.addDays(cursorEnd, step);
+                    }
+                }
+                while (cursor < rangeEnd) {
+                    occurrences.push({ ...evt, startTime: new Date(cursor), endTime: new Date(cursorEnd), sourceEvent: evt });
+                    if (evt.repeat === 'monthly') {
+                        cursor = this.addMonths(cursor, 1);
+                        cursorEnd = this.addMonths(cursorEnd, 1);
+                    } else {
+                        cursor = this.addDays(cursor, step);
+                        cursorEnd = this.addDays(cursorEnd, step);
+                    }
+                }
+                return occurrences;
+            }
+
+            getFilteredEvents() {
+                return this.applyFilters(
+                    this.state.events.map(evt => ({ ...evt, sourceEvent: evt }))
+                );
+            }
+
+            applyFilters(events) {
+                return events.filter(evt => {
+                    const matchCategory = this.state.filters.category === 'all' || evt.category === this.state.filters.category;
+                    const keyword = this.state.filters.search;
+                    const description = (evt.description || '').toLowerCase();
+                    const matchSearch = !keyword || evt.title.toLowerCase().includes(keyword) || description.includes(keyword);
+                    return matchCategory && matchSearch;
+                });
+            }
+
+            populateCategorySelect() {
+                const select = document.getElementById('eventCategory');
+                const filter = this.categoryFilter;
+                select.innerHTML = '';
+                filter.innerHTML = '<option value="all">全部分类</option>';
+                this.state.categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.id;
+                    option.textContent = cat.label;
+                    select.appendChild(option);
+                    const filterOption = document.createElement('option');
+                    filterOption.value = cat.id;
+                    filterOption.textContent = cat.label;
+                    filter.appendChild(filterOption);
+                });
+                if (!Array.from(filter.options).some(opt => opt.value === this.state.filters.category)) {
+                    this.state.filters.category = 'all';
+                }
+                filter.value = this.state.filters.category;
+            }
+
+            getCategory(id) {
+                return this.state.categories.find(cat => cat.id === id) || this.state.categories[0];
+            }
+
+            exportData() {
+                const data = {
+                    events: this.state.events.map(evt => ({ ...evt, startTime: evt.startTime.toISOString(), endTime: evt.endTime.toISOString() })),
+                    categories: this.state.categories
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'calendar-data.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                this.notify('数据导出成功');
+            }
+
+            importData(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        const data = JSON.parse(reader.result);
+                        if (!Array.isArray(data.events)) throw new Error('数据格式错误');
+                        this.state.events = data.events.map(evt => ({ ...evt, startTime: new Date(evt.startTime), endTime: new Date(evt.endTime) }));
+                        if (Array.isArray(data.categories)) this.state.categories = data.categories;
+                        this.populateCategorySelect();
+                        this.save();
+                        this.render();
+                        this.notify('数据导入成功');
+                    } catch (error) {
+                        this.notify('导入失败：' + error.message, 'error');
+                    }
+                    this.importInput.value = '';
+                };
+                reader.onerror = () => {
+                    this.notify('文件读取失败', 'error');
+                    this.importInput.value = '';
+                };
+                reader.readAsText(file);
+            }
+
+            startClock() {
+                const update = () => {
+                    const now = new Date();
+                    document.getElementById('clockDisplay').textContent = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                };
+                update();
+                setInterval(update, 60000);
+            }
+
+            startReminderWatcher() {
+                setInterval(() => {
+                    const now = new Date();
+                    const rangeStart = this.addHours(now, -1);
+                    const rangeEnd = this.addDays(now, 7);
+                    this.state.events.forEach(evt => {
+                        if (!evt.reminder || evt.reminder <= 0) return;
+                        this.expandEvent(evt, rangeStart, rangeEnd).forEach(instance => {
+                            const reminderTime = new Date(instance.startTime.getTime() - evt.reminder * 60000);
+                            const key = instance.sourceEvent.id + instance.startTime.toISOString() + evt.reminder;
+                            if (now >= reminderTime && now < instance.startTime && !this.state.remindersFired[key]) {
+                                this.state.remindersFired[key] = true;
+                                this.notify(`提醒：${instance.title} 将于 ${this.timeLabel(instance.startTime)} 开始`);
+                            }
+                        });
+                    });
+                }, 60000);
+            }
+
+            notify(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.innerHTML = `<strong>${type === 'error' ? '⚠️' : '✅'} ${message}</strong>`;
+                this.toastStack.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            }
+
+            renderStats() {
+                const weekStart = this.startOfWeek(new Date());
+                const weekEnd = this.addDays(weekStart, 7);
+                const weekEvents = this.getOccurrencesInRange(weekStart, weekEnd);
+                this.statScheduled.textContent = weekEvents.length;
+                const pending = weekEvents.filter(evt => !evt.completed).length;
+                this.statPending.textContent = pending;
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+                const todayEvents = this.getOccurrencesInRange(todayStart, this.addDays(todayStart, 1));
+                const duration = todayEvents.reduce((acc, evt) => acc + (evt.endTime - evt.startTime) / 3600000, 0);
+                this.statToday.textContent = `${duration.toFixed(1)}h`;
+            }
+
+            repeatLabel(type) {
+                return { none: '不重复', daily: '每天', weekly: '每周', monthly: '每月' }[type] || '不重复';
+            }
+
+            timeLabel(date) {
+                return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            }
+
+            fullDateLabel(date) {
+                return date.toLocaleString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            }
+
+            dayLabel(date) {
+                return new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(date);
+            }
+
+            countByCategory(catId) {
+                return this.state.events.filter(evt => evt.category === catId).length;
+            }
+
+            isSameDay(a, b) {
+                return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+            }
+
+            startOfWeek(date) {
+                const result = new Date(date);
+                const day = (result.getDay() + 6) % 7;
+                result.setDate(result.getDate() - day);
+                result.setHours(0, 0, 0, 0);
+                return result;
+            }
+
+            addDays(date, days) {
+                const result = new Date(date);
+                result.setDate(result.getDate() + days);
+                return result;
+            }
+
+            addHours(date, hours) {
+                const result = new Date(date);
+                result.setHours(result.getHours() + hours);
+                return result;
+            }
+
+            addMonths(date, months) {
+                const result = new Date(date);
+                result.setMonth(result.getMonth() + months);
+                return result;
+            }
+
+            toInputValue(date) {
+                const offset = date.getTimezoneOffset();
+                const local = new Date(date.getTime() - offset * 60000);
+                return local.toISOString().slice(0, 16);
+            }
+
+            updateThemeToggleIcon() {
+                const icon = document.querySelector('#themeToggle i');
+                if (!icon) return;
+                icon.className = this.state.settings.theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => new CalendarApp());
+    </script>
+</body>
+</html>

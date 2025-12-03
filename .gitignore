@@ -1,0 +1,7 @@
+# Rust 编译目标和依赖
+**/target/
+Cargo.lock
+# 忽略所有日志文件
+*.log
+
+**/.idea/
