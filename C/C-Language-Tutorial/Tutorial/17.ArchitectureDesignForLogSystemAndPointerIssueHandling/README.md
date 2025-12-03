@@ -1,0 +1,10 @@
+/*
+	企业案例：日志系统与指针问题处理的架构设计
+	1.logger
+	2.内存管理
+	3.error_handling
+	4.pointer_saft空指针、野指针、悬挂指针的处理
+	5.application_logic模块
+	6.测试
+	7.写入文件
+*/
