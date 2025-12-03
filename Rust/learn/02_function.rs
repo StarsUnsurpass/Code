@@ -12,11 +12,19 @@ fn main(){
     * 宏调用是一个表达式
     * 创建新作用域的大括号（代码块） {} 也是一个表达式
     */
-    let y = {
-        let x = 5;
-        x + 1
-    };
-    println!("y is {}", y);
+    // let y = {
+    //     let x = 5;
+    //     x + 1
+    // };
+    // println!("y is {}", y);
+
+    let num: i32 = 349;
+    let res = plus_one(num);
+    println!("num add one is {}", res);
+}
+
+fn plus_one(num: i32) -> i32{
+    num + 1
 }
 
 // 在函数签名中，必须声明每个参数的类型
